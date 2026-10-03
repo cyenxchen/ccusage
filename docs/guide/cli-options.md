@@ -69,6 +69,20 @@ ccusage daily --json --breakdown
 
 `--no-cost` removes cost columns from table output and removes cost fields such as `totalCost`, `costUSD`, and `cost` from JSON output.
 
+### Human-Readable Token Counts
+
+Use `--human-readable` to abbreviate token counts in text reports:
+
+```bash
+ccusage daily --human-readable
+ccusage codex monthly --human-readable --breakdown
+ccusage claude blocks --human-readable
+```
+
+Counts use decimal units: `K` = 1,000, `M` = 1,000,000, and `B` = 1,000,000,000. Values are rounded half up to two decimal places with trailing zeroes removed; for example, `1,234,567` becomes `1.23M` and `1,500` becomes `1.5K`. Counts below 1,000 remain whole numbers. Rounding to the next unit promotes the suffix, so `999,995` becomes `1M`.
+
+The flag applies to unified and per-agent daily, weekly, monthly, and session reports, including totals, model breakdowns, compact layouts, and Claude billing-block token counts, limits, and projections. It can be placed before or after the report command. Without it, text reports keep exact comma-separated counts. [JSON output](/guide/json-output) and `--jq` always retain raw numeric counts, even when the flag is present. Statusline formatting is unchanged.
+
 ### Cost Calculation Mode
 
 Choose how costs are calculated:

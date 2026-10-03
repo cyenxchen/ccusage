@@ -286,18 +286,18 @@ pub fn print_usage_table_with_options(
         let mut values = vec![
             label.to_string(),
             models,
-            format_number(row.input_tokens),
-            format_number(row.output_tokens),
+            format_tokens(row.input_tokens, shared),
+            format_tokens(row.output_tokens, shared),
         ];
         if !compact && options.show_cache_creation {
-            values.push(format_number(row.cache_creation_tokens));
+            values.push(format_tokens(row.cache_creation_tokens, shared));
         }
         if compact {
             values.push(format_currency(row.total_cost));
         } else {
             values.extend([
-                format_number(row.cache_read_tokens),
-                format_number(total_tokens),
+                format_tokens(row.cache_read_tokens, shared),
+                format_tokens(total_tokens, shared),
                 format_currency(row.total_cost),
             ]);
         }
@@ -353,17 +353,29 @@ pub fn print_usage_table_with_options(
     let mut total_row = vec![
         color(shared, "Total", Color::Yellow),
         String::new(),
-        color(shared, format_number(input), Color::Yellow),
-        color(shared, format_number(output), Color::Yellow),
+        color(shared, format_tokens(input, shared), Color::Yellow),
+        color(shared, format_tokens(output, shared), Color::Yellow),
     ];
     if !compact && options.show_cache_creation {
-        total_row.push(color(shared, format_number(cache_create), Color::Yellow));
+        total_row.push(color(
+            shared,
+            format_tokens(cache_create, shared),
+            Color::Yellow,
+        ));
     }
     if compact {
         total_row.push(color(shared, format_currency(total_cost), Color::Yellow));
     } else {
-        total_row.push(color(shared, format_number(cache_read), Color::Yellow));
-        total_row.push(color(shared, format_number(total_tokens), Color::Yellow));
+        total_row.push(color(
+            shared,
+            format_tokens(cache_read, shared),
+            Color::Yellow,
+        ));
+        total_row.push(color(
+            shared,
+            format_tokens(total_tokens, shared),
+            Color::Yellow,
+        ));
         total_row.push(color(shared, format_currency(total_cost), Color::Yellow));
     }
     if shared.no_cost {
@@ -486,13 +498,21 @@ fn push_breakdown_rows(
                 Color::Grey,
             ),
             String::new(),
-            color(shared, format_number(breakdown.input_tokens), Color::Grey),
-            color(shared, format_number(breakdown.output_tokens), Color::Grey),
+            color(
+                shared,
+                format_tokens(breakdown.input_tokens, shared),
+                Color::Grey,
+            ),
+            color(
+                shared,
+                format_tokens(breakdown.output_tokens, shared),
+                Color::Grey,
+            ),
         ];
         if !compact && show_cache_creation {
             values.push(color(
                 shared,
-                format_number(breakdown.cache_creation_tokens),
+                format_tokens(breakdown.cache_creation_tokens, shared),
                 Color::Grey,
             ));
         }
@@ -502,10 +522,10 @@ fn push_breakdown_rows(
             values.extend([
                 color(
                     shared,
-                    format_number(breakdown.cache_read_tokens),
+                    format_tokens(breakdown.cache_read_tokens, shared),
                     Color::Grey,
                 ),
-                color(shared, format_number(total), Color::Grey),
+                color(shared, format_tokens(total, shared), Color::Grey),
                 color(shared, format_currency(breakdown.cost), Color::Grey),
             ]);
         }
@@ -531,6 +551,31 @@ pub fn format_models_multiline(models: &[String]) -> String {
         .map(|model| format!("- {model}"))
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+/// Format a token count for text output, preserving exact counts by default.
+/// Decimal units are rounded half up to two decimal places without floating
+/// point conversion, and promoted if rounding reaches the next unit.
+pub fn format_tokens(value: u64, shared: &SharedArgs) -> String {
+    if !shared.human_readable || value < 1_000 {
+        return format_number(value);
+    }
+    const UNITS: [(u128, &str); 3] = [(1_000, "K"), (1_000_000, "M"), (1_000_000_000, "B")];
+    let value = u128::from(value);
+    for (index, (divisor, suffix)) in UNITS.iter().enumerate() {
+        let hundredths = (value * 100 + divisor / 2) / divisor;
+        if hundredths >= 100_000 && index + 1 < UNITS.len() {
+            continue;
+        }
+        let whole = hundredths / 100;
+        let fraction = hundredths % 100;
+        return match fraction {
+            0 => format!("{whole}{suffix}"),
+            fraction if fraction % 10 == 0 => format!("{whole}.{}{suffix}", fraction / 10),
+            _ => format!("{whole}.{fraction:02}{suffix}"),
+        };
+    }
+    unreachable!("the largest unit always formats the token count")
 }
 
 pub fn format_number(value: u64) -> String {
@@ -588,6 +633,61 @@ fn truncate_rfc3339_to_date(s: &str) -> String {
 mod tests {
     use super::*;
     use crate::ModelBreakdown;
+
+    #[test]
+    fn human_readable_tokens_use_decimal_units_and_trim_zeroes() {
+        let shared = SharedArgs {
+            human_readable: true,
+            ..SharedArgs::default()
+        };
+        for (value, expected) in [
+            (0, "0"),
+            (999, "999"),
+            (1_000, "1K"),
+            (1_005, "1.01K"),
+            (1_230, "1.23K"),
+            (1_500, "1.5K"),
+            (1_000_000, "1M"),
+            (1_234_567, "1.23M"),
+            (1_000_000_000, "1B"),
+            (1_234_567_890, "1.23B"),
+            (u64::MAX, "18446744073.71B"),
+        ] {
+            assert_eq!(format_tokens(value, &shared), expected, "{value}");
+        }
+    }
+
+    #[test]
+    fn human_readable_tokens_promote_units_after_rounding() {
+        let shared = SharedArgs {
+            human_readable: true,
+            ..SharedArgs::default()
+        };
+        for (value, expected) in [
+            (999_994, "999.99K"),
+            (999_995, "1M"),
+            (999_999, "1M"),
+            (999_994_999, "999.99M"),
+            (999_995_000, "1B"),
+            (999_999_999, "1B"),
+        ] {
+            assert_eq!(format_tokens(value, &shared), expected, "{value}");
+        }
+    }
+
+    #[test]
+    fn token_formatting_preserves_default_comma_separated_counts() {
+        let shared = SharedArgs::default();
+        for (value, expected) in [
+            (0, "0"),
+            (999, "999"),
+            (1_000, "1,000"),
+            (1_234_567, "1,234,567"),
+            (u64::MAX, "18,446,744,073,709,551,615"),
+        ] {
+            assert_eq!(format_tokens(value, &shared), expected);
+        }
+    }
 
     #[test]
     fn narrow_non_tty_output_does_not_auto_compact() {

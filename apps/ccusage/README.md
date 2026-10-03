@@ -152,6 +152,7 @@ bunx ccusage daily --last 1  # Today
 bunx ccusage weekly --last 1  # This week
 bunx ccusage monthly --last 1  # This month
 bunx ccusage daily --json  # JSON output
+bunx ccusage daily --human-readable  # Token counts as 1.23K, 1.23M, or 1.23B
 bunx ccusage daily --no-cost  # Hide cost columns and JSON cost fields
 bunx ccusage daily --timezone UTC  # Use UTC timezone
 

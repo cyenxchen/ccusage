@@ -6,7 +6,7 @@ use ccusage_core::cli::{AgentReportKind, SharedArgs};
 use ccusage_core::{
     Align, Color, Result, SimpleTable, USAGE_COMPACT_WIDTH_THRESHOLD, UsageSummary, color,
     first_column, format_breakdown_model_label, format_currency, format_models_multiline,
-    format_number, json_value_u64, print_box_title, should_use_compact_layout, terminal_style,
+    format_tokens, json_value_u64, print_box_title, should_use_compact_layout, terminal_style,
     terminal_width, totals_json,
 };
 
@@ -103,8 +103,8 @@ pub fn print_table_for_agent(
             let mut row_values = vec![
                 label.to_string(),
                 models,
-                format_number(row.input_tokens),
-                format_number(row.output_tokens),
+                format_tokens(row.input_tokens, shared),
+                format_tokens(row.output_tokens, shared),
                 format!("{:.2}", row.credits.unwrap_or_default()),
                 format_currency(row.total_cost),
             ];
@@ -116,11 +116,11 @@ pub fn print_table_for_agent(
             let mut row_values = vec![
                 label.to_string(),
                 models,
-                format_number(row.input_tokens),
-                format_number(row.output_tokens),
-                format_number(row.cache_creation_tokens),
-                format_number(row.cache_read_tokens),
-                format_number(row.total_tokens()),
+                format_tokens(row.input_tokens, shared),
+                format_tokens(row.output_tokens, shared),
+                format_tokens(row.cache_creation_tokens, shared),
+                format_tokens(row.cache_read_tokens, shared),
+                format_tokens(row.total_tokens(), shared),
                 format!("{:.2}", row.credits.unwrap_or_default()),
                 format_currency(row.total_cost),
             ];
@@ -144,12 +144,12 @@ pub fn print_table_for_agent(
             String::new(),
             color(
                 shared,
-                format_number(json_value_u64(totals.get("inputTokens"))),
+                format_tokens(json_value_u64(totals.get("inputTokens")), shared),
                 Color::Yellow,
             ),
             color(
                 shared,
-                format_number(json_value_u64(totals.get("outputTokens"))),
+                format_tokens(json_value_u64(totals.get("outputTokens")), shared),
                 Color::Yellow,
             ),
             color(shared, format!("{credits:.2}"), Color::Yellow),
@@ -176,13 +176,13 @@ pub fn print_table_for_agent(
         let mut row = vec![
             color(shared, "Total", Color::Yellow),
             String::new(),
-            color(shared, format_number(input), Color::Yellow),
-            color(shared, format_number(output), Color::Yellow),
-            color(shared, format_number(cache_create), Color::Yellow),
-            color(shared, format_number(cache_read), Color::Yellow),
+            color(shared, format_tokens(input, shared), Color::Yellow),
+            color(shared, format_tokens(output, shared), Color::Yellow),
+            color(shared, format_tokens(cache_create, shared), Color::Yellow),
+            color(shared, format_tokens(cache_read, shared), Color::Yellow),
             color(
                 shared,
-                format_number(json_value_u64(totals.get("totalTokens"))),
+                format_tokens(json_value_u64(totals.get("totalTokens")), shared),
                 Color::Yellow,
             ),
             color(shared, format!("{credits:.2}"), Color::Yellow),
@@ -240,8 +240,16 @@ fn breakdown_rows(row: &UsageSummary, compact: bool, shared: &SharedArgs) -> Vec
                     Color::Grey,
                 ),
                 String::new(),
-                color(shared, format_number(breakdown.input_tokens), Color::Grey),
-                color(shared, format_number(breakdown.output_tokens), Color::Grey),
+                color(
+                    shared,
+                    format_tokens(breakdown.input_tokens, shared),
+                    Color::Grey,
+                ),
+                color(
+                    shared,
+                    format_tokens(breakdown.output_tokens, shared),
+                    Color::Grey,
+                ),
                 String::new(),
                 color(shared, format_currency(breakdown.cost), Color::Grey),
             ];
@@ -257,19 +265,31 @@ fn breakdown_rows(row: &UsageSummary, compact: bool, shared: &SharedArgs) -> Vec
                     Color::Grey,
                 ),
                 String::new(),
-                color(shared, format_number(breakdown.input_tokens), Color::Grey),
-                color(shared, format_number(breakdown.output_tokens), Color::Grey),
                 color(
                     shared,
-                    format_number(breakdown.cache_creation_tokens),
+                    format_tokens(breakdown.input_tokens, shared),
                     Color::Grey,
                 ),
                 color(
                     shared,
-                    format_number(breakdown.cache_read_tokens),
+                    format_tokens(breakdown.output_tokens, shared),
                     Color::Grey,
                 ),
-                color(shared, format_number(breakdown.total_tokens()), Color::Grey),
+                color(
+                    shared,
+                    format_tokens(breakdown.cache_creation_tokens, shared),
+                    Color::Grey,
+                ),
+                color(
+                    shared,
+                    format_tokens(breakdown.cache_read_tokens, shared),
+                    Color::Grey,
+                ),
+                color(
+                    shared,
+                    format_tokens(breakdown.total_tokens(), shared),
+                    Color::Grey,
+                ),
                 String::new(),
                 color(shared, format_currency(breakdown.cost), Color::Grey),
             ];

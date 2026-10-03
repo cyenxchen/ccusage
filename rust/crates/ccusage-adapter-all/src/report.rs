@@ -13,7 +13,7 @@ use crate::{
     Align, Color, ModelBreakdown, Result, SimpleTable, UsageSummary, attach_unpriced_models,
     cli::{AgentReportKind, SharedArgs, SortOrder},
     cli_error, color, format_breakdown_model_label, format_currency, format_models_multiline,
-    format_number, json_float,
+    format_tokens, json_float,
     output::strip_cost_json,
     print_box_title, should_use_compact_layout, unpriced_models,
 };
@@ -236,10 +236,10 @@ pub(super) fn print_table(
         .with_date_compaction(true);
 
     for row in rows {
-        table.push(all_table_row(row, compact, false, shared.no_cost));
+        table.push(all_table_row(row, compact, false, shared));
         if let Some(agent_breakdowns) = row.agent_breakdowns.as_ref() {
             for breakdown in agent_breakdowns {
-                table.push(all_table_row(breakdown, compact, true, shared.no_cost));
+                table.push(all_table_row(breakdown, compact, true, shared));
                 if shared.breakdown && !breakdown.model_breakdowns.is_empty() {
                     push_model_breakdown_rows(
                         &mut table,
@@ -266,12 +266,12 @@ pub(super) fn print_table(
             String::new(),
             color(
                 shared,
-                format_number(crate::json_value_u64(totals.get("inputTokens"))),
+                format_tokens(crate::json_value_u64(totals.get("inputTokens")), shared),
                 Color::Yellow,
             ),
             color(
                 shared,
-                format_number(crate::json_value_u64(totals.get("outputTokens"))),
+                format_tokens(crate::json_value_u64(totals.get("outputTokens")), shared),
                 Color::Yellow,
             ),
             color(
@@ -296,25 +296,28 @@ pub(super) fn print_table(
             String::new(),
             color(
                 shared,
-                format_number(crate::json_value_u64(totals.get("inputTokens"))),
+                format_tokens(crate::json_value_u64(totals.get("inputTokens")), shared),
                 Color::Yellow,
             ),
             color(
                 shared,
-                format_number(crate::json_value_u64(totals.get("outputTokens"))),
+                format_tokens(crate::json_value_u64(totals.get("outputTokens")), shared),
                 Color::Yellow,
             ),
             color(
                 shared,
-                format_number(crate::json_value_u64(totals.get("cacheCreationTokens"))),
+                format_tokens(
+                    crate::json_value_u64(totals.get("cacheCreationTokens")),
+                    shared,
+                ),
                 Color::Yellow,
             ),
             color(
                 shared,
-                format_number(crate::json_value_u64(totals.get("cacheReadTokens"))),
+                format_tokens(crate::json_value_u64(totals.get("cacheReadTokens")), shared),
                 Color::Yellow,
             ),
-            color(shared, format_number(total_tokens), Color::Yellow),
+            color(shared, format_tokens(total_tokens, shared), Color::Yellow),
             color(
                 shared,
                 format_currency(
@@ -413,7 +416,7 @@ pub(super) fn all_table_row(
     row: &AllRow,
     compact: bool,
     breakdown: bool,
-    no_cost: bool,
+    shared: &SharedArgs,
 ) -> Vec<String> {
     let period = if breakdown {
         String::new()
@@ -438,11 +441,11 @@ pub(super) fn all_table_row(
             period,
             agent,
             models,
-            format_number(row.input_tokens),
-            format_number(row.output_tokens),
+            format_tokens(row.input_tokens, shared),
+            format_tokens(row.output_tokens, shared),
             format_currency(row.total_cost),
         ];
-        if no_cost {
+        if shared.no_cost {
             values.pop();
         }
         return values;
@@ -452,14 +455,14 @@ pub(super) fn all_table_row(
         period,
         agent,
         models,
-        format_number(row.input_tokens),
-        format_number(row.output_tokens),
-        format_number(row.cache_creation_tokens),
-        format_number(row.cache_read_tokens),
-        format_number(row.total_tokens),
+        format_tokens(row.input_tokens, shared),
+        format_tokens(row.output_tokens, shared),
+        format_tokens(row.cache_creation_tokens, shared),
+        format_tokens(row.cache_read_tokens, shared),
+        format_tokens(row.total_tokens, shared),
         format_currency(row.total_cost),
     ];
-    if no_cost {
+    if shared.no_cost {
         values.pop();
     }
     values
@@ -490,8 +493,8 @@ fn push_model_breakdown_rows(
                 String::new(),
                 String::new(),
                 model,
-                color(shared, format_number(b.input_tokens), Color::Grey),
-                color(shared, format_number(b.output_tokens), Color::Grey),
+                color(shared, format_tokens(b.input_tokens, shared), Color::Grey),
+                color(shared, format_tokens(b.output_tokens, shared), Color::Grey),
                 color(shared, format_currency(b.cost), Color::Grey),
             ];
             if shared.no_cost {
@@ -503,11 +506,19 @@ fn push_model_breakdown_rows(
                 String::new(),
                 String::new(),
                 model,
-                color(shared, format_number(b.input_tokens), Color::Grey),
-                color(shared, format_number(b.output_tokens), Color::Grey),
-                color(shared, format_number(b.cache_creation_tokens), Color::Grey),
-                color(shared, format_number(b.cache_read_tokens), Color::Grey),
-                color(shared, format_number(total), Color::Grey),
+                color(shared, format_tokens(b.input_tokens, shared), Color::Grey),
+                color(shared, format_tokens(b.output_tokens, shared), Color::Grey),
+                color(
+                    shared,
+                    format_tokens(b.cache_creation_tokens, shared),
+                    Color::Grey,
+                ),
+                color(
+                    shared,
+                    format_tokens(b.cache_read_tokens, shared),
+                    Color::Grey,
+                ),
+                color(shared, format_tokens(total, shared), Color::Grey),
                 color(shared, format_currency(b.cost), Color::Grey),
             ];
             if shared.no_cost {

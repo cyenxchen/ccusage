@@ -1,5 +1,5 @@
 ---
-source: crates/ccusage-cli/src/tests.rs
+source: crates/ccusage-cli-parser/src/tests.rs
 expression: help_text()
 ---
 USAGE:
@@ -68,6 +68,7 @@ OPTIONS:
   --by-agent                           Include per-agent JSON breakdowns in unified report rows (default: false)
   -O, --offline                        Use cached pricing data where supported (default: false)
   --no-offline                         Negatable of -O, --offline
+  --human-readable                     Abbreviate text token counts with decimal K/M/B units (JSON stays exact) (default: false)
   --compact                            Force compact table layout for narrow terminals (default: false)
   --no-cost                            Hide cost information in table and JSON output (default: false)
   --color                              Enable colored output. FORCE_COLOR=1 has the same effect. (default: auto)

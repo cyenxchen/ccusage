@@ -1662,3 +1662,38 @@ fn preserves_configured_order_and_cli_precedence() {
         assert_eq!(report.shared.order_explicit, explicit, "{config_json}");
     }
 }
+
+#[test]
+fn human_readable_tokens_are_opt_in_and_inherited_by_reports() {
+    assert!(!parse(&["ccusage"]).shared.human_readable);
+    assert!(
+        parse(&["ccusage", "--human-readable"])
+            .shared
+            .human_readable
+    );
+    for args in [
+        vec!["ccusage", "--human-readable", "daily"],
+        vec!["ccusage", "daily", "--human-readable"],
+        vec!["ccusage", "codex", "daily", "--human-readable"],
+        vec!["ccusage", "claude", "blocks", "--human-readable"],
+    ] {
+        let cli = parse(&args);
+        let shared = match cli.command.unwrap() {
+            Command::All(args) | Command::Codex(args) => args.shared,
+            Command::Daily(args) => args.shared,
+            Command::Blocks(args) => args.shared,
+            _ => panic!("expected report command"),
+        };
+        assert!(shared.human_readable, "{args:?}");
+    }
+}
+
+#[test]
+fn human_readable_tokens_can_be_combined_with_raw_json_output() {
+    let cli = parse(&["ccusage", "codex", "daily", "--human-readable", "--json"]);
+    let Some(Command::Codex(args)) = cli.command else {
+        panic!("expected Codex report")
+    };
+    assert!(args.shared.json);
+    assert!(args.shared.human_readable);
+}

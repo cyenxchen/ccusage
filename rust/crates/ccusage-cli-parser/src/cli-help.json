@@ -27,6 +27,11 @@
 			"description": "Negatable of -O, --offline"
 		},
 		{
+			"flags": "--human-readable",
+			"description": "Abbreviate text token counts with decimal K/M/B units (JSON stays exact)",
+			"default": "false"
+		},
+		{
 			"flags": "--compact",
 			"description": "Force compact table layout for narrow terminals",
 			"default": "false"
@@ -100,6 +105,11 @@
 		{
 			"flags": "--no-offline",
 			"description": "Negatable of -O, --offline"
+		},
+		{
+			"flags": "--human-readable",
+			"description": "Abbreviate text token counts with decimal K/M/B units (JSON stays exact)",
+			"default": "false"
 		},
 		{
 			"flags": "--compact",
@@ -194,6 +204,11 @@
 			"description": "Cost speed tier: auto uses recorded settings, then Codex config.toml; use standard or fast to override",
 			"default": "auto",
 			"choices": ["auto", "standard", "fast"]
+		},
+		{
+			"flags": "--human-readable",
+			"description": "Abbreviate text token counts with decimal K/M/B units (JSON stays exact)",
+			"default": "false"
 		},
 		{
 			"flags": "--compact",
@@ -336,6 +351,11 @@
 			"flags": "--config <config>",
 			"description": "Path to configuration file",
 			"default": "auto-discovery"
+		},
+		{
+			"flags": "--human-readable",
+			"description": "Abbreviate text token counts with decimal K/M/B units (JSON stays exact)",
+			"default": "false"
 		},
 		{
 			"flags": "--compact",
