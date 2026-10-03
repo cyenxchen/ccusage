@@ -23,11 +23,12 @@ use crate::{
     color,
     fast::FxHashMap,
     filter_and_sort_summaries, filter_blocks_by_date, format_currency, format_date, format_number,
-    format_remaining_time, format_rfc3339_millis, group_project_output, identify_session_blocks,
-    load_daily_summaries, load_entries, load_entries_since, print_active_block_detail,
-    print_blocks_table, print_json_or_jq, print_usage_table, session_summary_json, sort_blocks,
-    sort_summaries, summarize_by_key, summarize_summaries_by_bucket, summary_json,
-    total_usage_tokens, totals_json, utc_now, wants_json,
+    format_remaining_time, format_rfc3339_millis, format_tokens, group_project_output,
+    identify_session_blocks, load_daily_summaries, load_entries, load_entries_since,
+    print_active_block_detail, print_blocks_table, print_json_or_jq, print_usage_table,
+    session_summary_json, sort_blocks, sort_summaries, summarize_by_key,
+    summarize_summaries_by_bucket, summary_json, total_usage_tokens, totals_json, utc_now,
+    wants_json,
 };
 
 pub(crate) fn run_daily(args: DailyArgs) -> Result<()> {
@@ -254,7 +255,7 @@ fn run_session_id(id: &str, shared: &SharedArgs) -> Result<()> {
     if !shared.no_cost {
         println!("Total Cost: {}", format_currency(total_cost));
     }
-    println!("Total Tokens: {}", format_number(total_tokens));
+    println!("Total Tokens: {}", format_tokens(total_tokens, shared));
     println!("Total Entries: {}", session_entries.len());
     Ok(())
 }

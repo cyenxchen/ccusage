@@ -771,6 +771,7 @@ fn parse_shared_arg(parser: &mut ArgParser, shared: &mut SharedArgs) -> Result<(
         "-q" | "--jq" => shared.jq = Some(parser.value_for("--jq")?),
         "--config" => shared.config = Some(PathBuf::from(parser.value_for("--config")?)),
         "--compact" => shared.compact = true,
+        "--human-readable" => shared.human_readable = true,
         "--single-thread" => shared.single_thread = true,
         "--no-cost" => shared.no_cost = true,
         flag => return Err(format!("Unknown option '{flag}'")),
@@ -1039,6 +1040,7 @@ fn is_shared_flag(arg: &str) -> bool {
             | "--jq"
             | "--config"
             | "--compact"
+            | "--human-readable"
             | "--single-thread"
             | "--no-cost"
     )

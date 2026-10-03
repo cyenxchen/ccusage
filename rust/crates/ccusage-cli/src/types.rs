@@ -53,6 +53,8 @@ pub struct SharedArgs {
     pub jq: Option<String>,
     pub config: Option<PathBuf>,
     pub compact: bool,
+    /// Abbreviate human-facing token counts using decimal K/M/B units.
+    pub human_readable: bool,
     pub single_thread: bool,
     pub no_cost: bool,
     pub pricing_overrides: BTreeMap<String, PricingOverride>,

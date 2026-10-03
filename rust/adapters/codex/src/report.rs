@@ -6,7 +6,7 @@ use crate::{
     Align, CodexGroup, CodexModelUsage, CodexServiceTier, CodexTimestampedUsage, CodexUsageBucket,
     Color, PricingMap, Result, SimpleTable, attach_unpriced_models,
     cli::{AgentReportKind, CostMode, SharedArgs},
-    color, format_breakdown_model_label, format_currency, format_models_multiline, format_number,
+    color, format_breakdown_model_label, format_currency, format_models_multiline, format_tokens,
     json_float, missing_pricing_model_for_token_total, print_box_title,
     print_missing_pricing_warnings_for_models, sanitize_terminal_text,
 };
@@ -422,7 +422,7 @@ fn codex_table_row(
     group: &CodexGroup,
     pricing: &PricingMap,
     speed: CodexSpeedPolicy,
-    no_cost: bool,
+    shared: &SharedArgs,
     terminal_width: usize,
 ) -> (Vec<String>, u64, f64) {
     let input_tokens = non_cached_input_tokens(
@@ -435,15 +435,15 @@ fn codex_table_row(
     let mut row = vec![
         codex_table_label(label, kind, terminal_width),
         models,
-        format_number(input_tokens),
-        format_number(group.output_tokens),
-        format_number(group.reasoning_output_tokens),
-        format_number(group.cache_creation_tokens),
-        format_number(group.cached_input_tokens),
-        format_number(group.total_tokens),
+        format_tokens(input_tokens, shared),
+        format_tokens(group.output_tokens, shared),
+        format_tokens(group.reasoning_output_tokens, shared),
+        format_tokens(group.cache_creation_tokens, shared),
+        format_tokens(group.cached_input_tokens, shared),
+        format_tokens(group.total_tokens, shared),
         format_currency(cost),
     ];
-    if no_cost {
+    if shared.no_cost {
         row.pop();
     }
     (row, input_tokens, cost)
@@ -542,24 +542,32 @@ fn codex_breakdown_rows(
         let mut row = vec![
             color(shared, format_breakdown_model_label(model), Color::Grey),
             String::new(),
-            color(shared, format_number(input_tokens), Color::Grey),
-            color(shared, format_number(usage.output_tokens), Color::Grey),
+            color(shared, format_tokens(input_tokens, shared), Color::Grey),
             color(
                 shared,
-                format_number(usage.reasoning_output_tokens),
+                format_tokens(usage.output_tokens, shared),
                 Color::Grey,
             ),
             color(
                 shared,
-                format_number(usage.cache_creation_tokens),
+                format_tokens(usage.reasoning_output_tokens, shared),
                 Color::Grey,
             ),
             color(
                 shared,
-                format_number(usage.cached_input_tokens),
+                format_tokens(usage.cache_creation_tokens, shared),
                 Color::Grey,
             ),
-            color(shared, format_number(usage.total_tokens), Color::Grey),
+            color(
+                shared,
+                format_tokens(usage.cached_input_tokens, shared),
+                Color::Grey,
+            ),
+            color(
+                shared,
+                format_tokens(usage.total_tokens, shared),
+                Color::Grey,
+            ),
             color(shared, format_currency(cost), Color::Grey),
         ];
         if shared.no_cost {
@@ -578,24 +586,36 @@ fn codex_table_total_row(
     let mut row = vec![
         color(shared, "Total", Color::Yellow),
         String::new(),
-        color(shared, format_number(totals.input_tokens), Color::Yellow),
-        color(shared, format_number(totals.output_tokens), Color::Yellow),
         color(
             shared,
-            format_number(totals.reasoning_output_tokens),
+            format_tokens(totals.input_tokens, shared),
             Color::Yellow,
         ),
         color(
             shared,
-            format_number(totals.cache_creation_tokens),
+            format_tokens(totals.output_tokens, shared),
             Color::Yellow,
         ),
         color(
             shared,
-            format_number(totals.cached_input_tokens),
+            format_tokens(totals.reasoning_output_tokens, shared),
             Color::Yellow,
         ),
-        color(shared, format_number(totals.total_tokens), Color::Yellow),
+        color(
+            shared,
+            format_tokens(totals.cache_creation_tokens, shared),
+            Color::Yellow,
+        ),
+        color(
+            shared,
+            format_tokens(totals.cached_input_tokens, shared),
+            Color::Yellow,
+        ),
+        color(
+            shared,
+            format_tokens(totals.total_tokens, shared),
+            Color::Yellow,
+        ),
         color(shared, format_currency(totals.cost), Color::Yellow),
     ];
     if no_cost {
@@ -640,15 +660,8 @@ pub(super) fn print_table_from_groups(
         .with_date_compaction(true);
     let mut totals = CodexTableTotals::default();
     for (label, group) in groups {
-        let (row, input_tokens, cost) = codex_table_row(
-            label,
-            kind,
-            group,
-            pricing,
-            speed,
-            shared.no_cost,
-            terminal_width,
-        );
+        let (row, input_tokens, cost) =
+            codex_table_row(label, kind, group, pricing, speed, shared, terminal_width);
         totals.add(group, input_tokens, cost);
         table.push(row);
         push_codex_breakdown_rows(&mut table, group, pricing, speed, shared);
@@ -669,6 +682,7 @@ pub(super) fn print_table_from_groups(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ccusage_core::format_number;
 
     #[test]
     fn report_totals_list_unpriced_codex_models_only_when_present() {
@@ -831,7 +845,7 @@ mod tests {
             &group,
             &PricingMap::default(),
             CodexSpeedPolicy::Forced(CodexServiceTier::Standard),
-            false,
+            &SharedArgs::default(),
             160,
         );
         let mut totals = CodexTableTotals::default();
@@ -862,7 +876,7 @@ mod tests {
             &group,
             &PricingMap::default(),
             CodexSpeedPolicy::Forced(CodexServiceTier::Standard),
-            false,
+            &SharedArgs::default(),
             120,
         );
         let (no_cost_headers, no_cost_aligns) = codex_table_columns("Date", true);
@@ -872,7 +886,10 @@ mod tests {
             &group,
             &PricingMap::default(),
             CodexSpeedPolicy::Forced(CodexServiceTier::Standard),
-            true,
+            &SharedArgs {
+                no_cost: true,
+                ..SharedArgs::default()
+            },
             120,
         );
 
@@ -906,7 +923,10 @@ mod tests {
             &group,
             &PricingMap::default(),
             CodexSpeedPolicy::Forced(CodexServiceTier::Standard),
-            true,
+            &SharedArgs {
+                no_cost: true,
+                ..SharedArgs::default()
+            },
             120,
         );
         let (second_row, second_input, second_cost) = codex_table_row(
@@ -915,7 +935,10 @@ mod tests {
             &group,
             &PricingMap::default(),
             CodexSpeedPolicy::Forced(CodexServiceTier::Standard),
-            true,
+            &SharedArgs {
+                no_cost: true,
+                ..SharedArgs::default()
+            },
             120,
         );
         let mut totals = CodexTableTotals::default();
@@ -1014,7 +1037,7 @@ mod tests {
             &group,
             &PricingMap::default(),
             CodexSpeedPolicy::Forced(CodexServiceTier::Standard),
-            false,
+            &SharedArgs::default(),
             160,
         );
         assert_eq!(input, group_input);
@@ -1037,7 +1060,7 @@ mod tests {
             &group,
             &PricingMap::default(),
             CodexSpeedPolicy::Forced(CodexServiceTier::Standard),
-            false,
+            &SharedArgs::default(),
             160,
         );
 

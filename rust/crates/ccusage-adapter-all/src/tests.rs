@@ -940,13 +940,13 @@ fn table_snapshot(
     for row in rows {
         rendered_rows.push(json!({
             "kind": "row",
-            "cells": all_table_row(row, false, false, false),
+            "cells": all_table_row(row, false, false, &SharedArgs::default()),
         }));
         if let Some(agent_breakdowns) = row.agent_breakdowns.as_ref() {
             for breakdown in agent_breakdowns {
                 rendered_rows.push(json!({
                     "kind": "agent-breakdown",
-                    "cells": all_table_row(breakdown, false, true, false),
+                    "cells": all_table_row(breakdown, false, true, &SharedArgs::default()),
                 }));
             }
         }
@@ -967,7 +967,7 @@ fn table_snapshot(
         agent_breakdowns: None,
         model_breakdowns: Vec::new(),
     };
-    let mut total_cells = all_table_row(&total_row, false, false, false);
+    let mut total_cells = all_table_row(&total_row, false, false, &SharedArgs::default());
     total_cells[1].clear();
     total_cells[2].clear();
     rendered_rows.push(json!({
@@ -1341,7 +1341,7 @@ fn displays_total_tokens_including_extra_tokens() {
         model_breakdowns: Vec::new(),
     };
 
-    let cells = all_table_row(&row, false, false, false);
+    let cells = all_table_row(&row, false, false, &SharedArgs::default());
 
     assert_eq!(cells[7], "135");
 }
@@ -1409,7 +1409,7 @@ fn all_table_rows_match_main_agent_breakdown_display() {
     };
 
     assert_eq!(
-        all_table_row(&row, true, false, false),
+        all_table_row(&row, true, false, &SharedArgs::default()),
         vec!["2026-01-02", "All", "", "100", "20", "$0.01"]
     );
     assert_eq!(
@@ -1417,7 +1417,7 @@ fn all_table_rows_match_main_agent_breakdown_display() {
             row.agent_breakdowns.as_ref().unwrap().first().unwrap(),
             true,
             true,
-            false,
+            &SharedArgs::default()
         ),
         vec!["", "- Codex", "- gpt-5", "100", "20", "$0.01"]
     );

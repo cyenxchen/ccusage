@@ -9,7 +9,7 @@ use crate::{
     cli::{SharedArgs, SortOrder},
     color,
     fast::FxHashSet,
-    format_currency, format_date, format_models_multiline, format_number, format_rfc3339_millis,
+    format_currency, format_date, format_models_multiline, format_rfc3339_millis, format_tokens,
     format_utc_second, hour_12, json_float, local_parts, print_box_title,
     should_use_compact_layout, terminal_width, utc_now,
 };
@@ -388,7 +388,7 @@ pub fn print_blocks_table(
                 String::new()
             },
             format_block_models(&block.models),
-            format_number(total),
+            format_tokens(total, shared),
         ];
         if let Some(limit) = actual_limit.filter(|limit| *limit > 0) {
             let percentage = total as f64 / limit as f64 * 100.0;
@@ -412,13 +412,13 @@ pub fn print_blocks_table(
                 let mut remaining_row = vec![
                     color(
                         shared,
-                        format!("(assuming {} token limit)", format_number(limit)),
+                        format!("(assuming {} token limit)", format_tokens(limit, shared)),
                         Color::Grey,
                     ),
                     color(shared, "REMAINING", Color::Blue),
                     String::new(),
                     if remaining > 0 {
-                        format_number(remaining)
+                        format_tokens(remaining, shared)
                     } else {
                         color(shared, "0", Color::Red)
                     },
@@ -441,10 +441,12 @@ pub fn print_blocks_table(
                     color(shared, "PROJECTED", Color::Yellow),
                     String::new(),
                     match actual_limit {
-                        Some(limit) if limit > 0 && projection.total_tokens > limit => {
-                            color(shared, format_number(projection.total_tokens), Color::Red)
-                        }
-                        _ => format_number(projection.total_tokens),
+                        Some(limit) if limit > 0 && projection.total_tokens > limit => color(
+                            shared,
+                            format_tokens(projection.total_tokens, shared),
+                            Color::Red,
+                        ),
+                        _ => format_tokens(projection.total_tokens, shared),
                     },
                 ];
                 if let Some(limit) = actual_limit.filter(|limit| *limit > 0) {
@@ -490,11 +492,11 @@ pub fn print_active_block_detail(
     println!("{}", color(shared, "Current Usage:", Color::Blue));
     println!(
         "  Input Tokens:     {}",
-        format_number(block.token_counts.input_tokens)
+        format_tokens(block.token_counts.input_tokens, shared)
     );
     println!(
         "  Output Tokens:    {}",
-        format_number(block.token_counts.output_tokens)
+        format_tokens(block.token_counts.output_tokens, shared)
     );
     if !shared.no_cost {
         println!("  Total Cost:       {}", format_currency(block.cost_usd));
@@ -505,7 +507,7 @@ pub fn print_active_block_detail(
         println!("{}", color(shared, "Burn Rate:", Color::Blue));
         println!(
             "  Tokens/minute:    {}",
-            format_number(rate.tokens_per_minute.round() as u64)
+            format_tokens(rate.tokens_per_minute.round() as u64, shared)
         );
         if !shared.no_cost {
             println!(
@@ -527,7 +529,7 @@ pub fn print_active_block_detail(
         );
         println!(
             "  Total Tokens:     {}",
-            format_number(projection.total_tokens)
+            format_tokens(projection.total_tokens, shared)
         );
         if !shared.no_cost {
             println!(
@@ -549,15 +551,18 @@ pub fn print_active_block_detail(
             };
             println!();
             println!("{}", color(shared, "Token Limit Status:", Color::Blue));
-            println!("  Limit:            {} tokens", format_number(limit));
+            println!(
+                "  Limit:            {} tokens",
+                format_tokens(limit, shared)
+            );
             println!(
                 "  Current Usage:    {} ({:.1}%)",
-                format_number(current),
+                format_tokens(current, shared),
                 current as f64 / limit as f64 * 100.0
             );
             println!(
                 "  Remaining:        {} tokens",
-                format_number(remaining_tokens)
+                format_tokens(remaining_tokens, shared)
             );
             println!("  Projected Usage:  {percent:.1}% {status}");
         }
